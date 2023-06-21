@@ -4,6 +4,7 @@ import { setInterval } from 'node:timers';
 import axios from 'axios';
 import { EmbedBuilder, WebhookClient, resolveColor } from 'discord.js';
 import { Logger } from './Logger';
+import { startCase } from 'lodash';
 import { CheckTime, Colors, Webhook } from '../config';
 import { IncidentSaveData, StatusPageCheckerOptions, StatusPageData, StatusPageIncidentData } from '../constants/Interfaces';
 import { StatusPageMaintenanceData } from '../constants/Maintenance';
@@ -116,7 +117,7 @@ export class StatusPageChecker {
         for (const incidentUpdate of incident.incident_updates.reverse()) {
             const incidentUpdateDate = new Date(Date.parse(incidentUpdate.created_at));
             incidentEmbed.addFields({
-                name: `${incidentUpdate.status.charAt(0).toUpperCase()}${incidentUpdate.status.slice(1)} (<t:${Math.floor(incidentUpdateDate.getTime() / 1000)}:R>)`,
+                name: `${startCase(incidentUpdate.status)} (<t:${Math.floor(incidentUpdateDate.getTime() / 1000)}:R>)`,
                 value: incidentUpdate.body,
             });
         }
