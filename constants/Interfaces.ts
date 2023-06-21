@@ -92,11 +92,16 @@ export type StatusPageIncidentImpactType =
     'none' |
     'minor' |
     'major' |
-    'critical';
+    'critical' |
+    'maintenance';
 
 export type StatusPageIncidentStatusType =
     'investigating' |
     'identified' |
     'monitoring' |
     'postmortem' |
-    'resolved';
+    'resolved' |
+    'scheduled' |
+    'in_progress' |
+    'verifying' |
+    'completed';

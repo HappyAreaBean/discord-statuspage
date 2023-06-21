@@ -6,6 +6,7 @@ import { EmbedBuilder, WebhookClient, resolveColor } from 'discord.js';
 import { Logger } from './Logger';
 import { CheckTime, Colors, Webhook } from '../config';
 import { IncidentSaveData, StatusPageCheckerOptions, StatusPageData, StatusPageIncidentData } from '../constants/Interfaces';
+import { StatusPageMaintenanceData } from '../constants/Maintenance';
 
 export class StatusPageChecker {
     public file: Array<IncidentSaveData>;
@@ -33,28 +34,46 @@ export class StatusPageChecker {
 
         Logger.log(this.options.translations.LISTENING_ON.replace('{{URL}}', this.options.url));
 
-        this.check();
-        setInterval(() => this.check(), CheckTime);
+        this.check("incidents");
+        this.check("scheduled-maintenances");
+        setInterval(() => this.check("incidents"), CheckTime);
+        setInterval(() => this.check("scheduled-maintenances"), CheckTime);
     }
 
-    public async check(): Promise<boolean> {
+    public async check(file: string): Promise<boolean> {
         Logger.log(this.options.translations.CHECKING.replace('{{NAME}}', this.options.name));
-
+    
         try {
-            const data = await (await axios.get(`${this.options.url}/api/v2/incidents.json`)).data as StatusPageData;
-            const { incidents } = data;
-
+            let data;
+            let incidents;
+            if (file === 'incidents') {
+                data = await (await axios.get(`${this.options.url}/api/v2/incidents.json`)).data as StatusPageData;
+                incidents = data.incidents;
+            }
+            if (file === 'scheduled-maintenances') {
+                data = await (await axios.get(`${this.options.url}/api/v2/scheduled-maintenances.json`)).data as StatusPageMaintenanceData;
+                incidents = data.scheduled_maintenances;
+            }
+            if (data == null) {
+                Logger.error('Data is null. Failed to check.');
+                return false;
+            }
+            if (incidents == null) {
+                Logger.error('incidents is null. Failed to check.');
+                return false;
+            }
+    
             for (const incident of incidents.reverse()) {
                 const incidentData = this.incidents.find(i => i.incidentId === incident.id);
-
+    
                 if (!incidentData) {
                     Logger.log(this.options.translations.NEW_INCIDENT.replace('{{NAME}}', this.options.name).replace('{{ID}}', incident.id));
                     this.updateIncident(incident);
                     continue;
                 }
-
+    
                 const incidentUpdate = new Date(Date.parse(incident.updated_at ?? incident.created_at));
-
+    
                 if (new Date(Date.parse(incidentData.lastUpdate)) < incidentUpdate) {
                     Logger.log(this.options.translations.NEW_INCIDENT_UPDATE.replace('{{NAME}}', this.options.name).replace('{{ID}}', incident.id));
                     this.updateIncident(incident, incidentData.messageId);
@@ -68,22 +87,26 @@ export class StatusPageChecker {
             return false;
         }
     }
+    
+    
 
     public generateEmbed(incident: StatusPageIncidentData): EmbedBuilder {
         const incidentEmbed = new EmbedBuilder()
             .setTitle(incident.name)
-            .setFooter({ text: incident.id })
+            .setFooter({ text: `Incident ID: ${incident.id}` })
             .setTimestamp(new Date(incident.started_at))
             .setURL(incident.shortlink);
 
-        const incidentEmbedColor = incident.status === 'postmortem' || incident.status === 'resolved'
+        const incidentEmbedColor = incident.status === 'postmortem' || incident.status === 'resolved' || incident.status === 'completed'
             ? Colors.GREEN
             : incident.impact === 'critical'
             ? Colors.RED
             : incident.impact === 'major'
             ? Colors.ORANGE
-            : incident.impact === 'minor'
+            : incident.impact === 'minor' || incident.status === 'in_progress'
             ? Colors.YELLOW
+            : incident.status === 'scheduled'
+            ? Colors.BLUE
             : Colors.GRAY;
 
         incidentEmbed.setColor(resolveColor(incidentEmbedColor));
@@ -98,9 +121,9 @@ export class StatusPageChecker {
             });
         }
 
-        const incidentEmbedDescription = [`・${this.options.translations.IMPACT}: ${incident.impact}`];
+        const incidentEmbedDescription = [`- **${this.options.translations.IMPACT}**: ${incident.impact}`];
 
-        if (affectedComponents && affectedComponents.length > 0) incidentEmbedDescription.push(`・${this.options.translations.AFFECTED_COMPONENTS}: ${affectedComponents.join(', ')}`);
+        if (affectedComponents && affectedComponents.length > 0) incidentEmbedDescription.push(`- **${this.options.translations.AFFECTED_COMPONENTS}**: ${affectedComponents.join(', ')}`);
 
         incidentEmbed.setDescription(incidentEmbedDescription.join('\n'));
 
@@ -121,7 +144,7 @@ export class StatusPageChecker {
                 incidentId: incident.id,
                 lastUpdate: new Date(Date.now()).toISOString(),
                 messageId: incidentMessage.id,
-                resolved: incident.status === 'postmortem' || incident.status === 'resolved',
+                resolved: incident.status === 'postmortem' || incident.status === 'resolved' || incident.status === 'completed',
             });
 
             await writeFileSync(this.options.db, JSON.stringify(this.incidents));
