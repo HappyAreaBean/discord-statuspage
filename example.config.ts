@@ -13,4 +13,5 @@ export const Colors = {
     BLUE: 0x0000ff,
 };
 export const Language: Languages = 'en'; // Available langs: de en
-export const Webhook = ''; // The Webhook URL
+export const Webhook = ''; // The Webhook URL\
+export const roleId: number[] = []; // Discord Roles you want to tag with

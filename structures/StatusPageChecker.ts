@@ -2,10 +2,10 @@ import { copyFileSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setInterval } from 'node:timers';
 import axios from 'axios';
-import { EmbedBuilder, WebhookClient, resolveColor } from 'discord.js';
+import { EmbedBuilder, WebhookClient, resolveColor, roleMention } from 'discord.js';
 import { Logger } from './Logger';
 import { startCase } from 'lodash';
-import { CheckTime, Colors, Webhook } from '../config';
+import { CheckTime, Colors, Webhook, roleId } from '../config';
 import { IncidentSaveData, StatusPageCheckerOptions, StatusPageData, StatusPageIncidentData } from '../constants/Interfaces';
 import { StatusPageMaintenanceData } from '../constants/Maintenance';
 
@@ -135,7 +135,7 @@ export class StatusPageChecker {
         const incidentEmbed = this.generateEmbed(incident);
 
         try {
-            const incidentMessage = await (messageId ? this.webhook.editMessage(messageId, { embeds: [incidentEmbed] }) : this.webhook.send({ embeds: [incidentEmbed] }));
+            const incidentMessage = await (messageId ? this.webhook.editMessage(messageId, { embeds: [incidentEmbed] }) : this.webhook.send({ content: roleId.map(value => roleMention(value.toString())).join(' '), embeds: [incidentEmbed] }));
 
             Logger.log(this.options.translations.NEW_INCIDENT_MESSAGE.replace('{{MID}}', incidentMessage.id).replace('{{NAME}}', this.options.name).replace('{{ID}}', incident.id));
 
