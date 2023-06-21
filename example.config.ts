@@ -10,6 +10,7 @@ export const Colors = {
     ORANGE: 0xEA7D17,
     RED: 0xD44D44,
     YELLOW: 0xFFC327,
+    BLUE: 0x0000ff,
 };
 export const Language: Languages = 'en'; // Available langs: de en
 export const Webhook = ''; // The Webhook URL
